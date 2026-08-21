@@ -91,11 +91,48 @@ owner, and the default voices and starter rules are seeded automatically.
 Which model gets used is a per-workspace setting under **Settings → The engine**;
 keys stay in the environment and are never written to the database.
 
-### Deploying
+### Deploying to Render
 
-Any Node host. On Vercel, set the same variables, point `DATABASE_URL` at a
-pooled connection and `DIRECT_URL` at the direct one, and set `APP_URL` to the
-deployed origin.
+`render.yaml` in the repo root is a Blueprint — in Render choose **New →
+Blueprint**, point it at this repo, and it creates the web service with the
+right build and start commands. Or create a Web Service by hand with:
+
+| Setting | Value |
+| --- | --- |
+| Runtime | Node |
+| Build command | `npm ci --include=dev && npx prisma migrate deploy && npm run build` |
+| Start command | `npm start` |
+| Health check path | `/login` |
+
+`--include=dev` matters: the build needs the Prisma CLI and TypeScript, and
+Render's build step can otherwise skip dev dependencies.
+
+Then set the environment variables from the table above. Two Render-specific
+notes:
+
+- **`APP_URL` must be the live origin** (`https://texter.onrender.com`, or your
+  custom domain). Invite and password-reset links are built from it, so getting
+  it wrong sends people to localhost.
+- **Let Render generate `AUTH_SECRET`** and then leave it alone — rotating it
+  signs every session out.
+
+### Neon
+
+Neon gives you two connection strings for the same database. Use both:
+
+- `DATABASE_URL` → the **pooled** string, the one with `-pooler` in the host.
+  This is what the running app uses.
+- `DIRECT_URL` → the **direct** string, without `-pooler`. Only the Prisma CLI
+  uses it, during `migrate deploy`.
+
+Keep `?sslmode=require` on both. `DATABASE_POOL_MAX=5` is a sensible starting
+point for one Render instance; raise it if you scale up, and watch Neon's
+connection limit if you scale out.
+
+### Other hosts
+
+Anything that runs Node works the same way — set the variables, run
+`prisma migrate deploy` during the build, then `npm start`.
 
 ## Stack
 

@@ -1,0 +1,47 @@
+# Render blueprint. In Render: New > Blueprint, point it at this repo, then fill
+# in the secrets it asks for. Everything marked `sync: false` is entered once in
+# the dashboard and never committed.
+services:
+  - type: web
+    name: texter
+    runtime: node
+    plan: starter
+    healthCheckPath: /login
+    # --include=dev matters: the build needs the Prisma CLI and TypeScript,
+    # both of which are dev dependencies.
+    buildCommand: npm ci --include=dev && npx prisma migrate deploy && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # Neon: the pooled connection for the app, the direct one for migrations.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: DATABASE_POOL_MAX
+        value: "5"
+
+      # Generated once by Render and then left alone — changing it signs
+      # everyone out.
+      - key: AUTH_SECRET
+        generateValue: true
+
+      # Must be the live origin, e.g. https://texter.onrender.com. Invite and
+      # password-reset links are built from it.
+      - key: APP_URL
+        sync: false
+
+      # At least one of these.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # Optional. Without them, invite links show in Settings for an admin to
+      # copy and reset links go to the Render logs.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
