@@ -26,9 +26,29 @@ export default async function ReviewPage({ params }: PageProps<"/reviews/[id]">)
       style: { select: { name: true } },
       author: { select: { name: true } },
       asset: { select: { mimeType: true, filename: true } },
+      campaign: { select: { id: true, name: true, brief: true } },
     },
   });
   if (!review) notFound();
+
+  const [siblings, campaignOptions] = await Promise.all([
+    review.campaignId
+      ? db.review.findMany({
+          where: { campaignId: review.campaignId, id: { not: review.id } },
+          orderBy: [{ approvedAt: "desc" }, { createdAt: "desc" }],
+          take: 10,
+          select: { id: true, title: true, contentType: true, approvedAt: true },
+        })
+      : Promise.resolve([]),
+    review.campaignId
+      ? Promise.resolve([])
+      : db.campaign.findMany({
+          where: { workspaceId: workspace.id },
+          orderBy: { updatedAt: "desc" },
+          take: 30,
+          select: { id: true, name: true },
+        }),
+  ]);
 
   const stage = STAGE_LABEL[review.stage];
 
@@ -50,6 +70,14 @@ export default async function ReviewPage({ params }: PageProps<"/reviews/[id]">)
     answers: (review.answers as Record<string, string> | null) ?? {},
     output: (review.output as Output | null) ?? null,
     approvedText: review.approvedText,
+    campaign: review.campaign,
+    siblings: siblings.map((sibling) => ({
+      id: sibling.id,
+      title: sibling.title,
+      typeLabel: specFor(sibling.contentType).label,
+      shipped: Boolean(sibling.approvedAt),
+    })),
+    campaignOptions,
   };
 
   return (

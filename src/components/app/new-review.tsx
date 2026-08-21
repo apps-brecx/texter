@@ -3,9 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { FileText, Loader2, Upload, X } from "lucide-react";
+import { FileText, Link2, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Field, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Alert, Card } from "@/components/ui/surface";
 import { Mark } from "@/components/brand/mark";
 import { CONTENT_TYPES } from "@/lib/ai/content-types";
@@ -20,10 +20,18 @@ import { shrinkImage } from "@/lib/shrink-image";
 import { cn } from "@/lib/utils";
 
 type Style = { id: string; name: string; tagline: string; isDefault: boolean };
+export type CampaignOption = {
+  id: string;
+  name: string;
+  pieceCount: number;
+  lastPiece: string | null;
+};
+
+const NEW_CAMPAIGN = "__new__";
 
 const STEPS = ["Reading what you sent", "Checking it against your house rules", "Working out what to ask you"];
 
-export function NewReview({ styles }: { styles: Style[] }) {
+export function NewReview({ styles, campaigns }: { styles: Style[]; campaigns: CampaignOption[] }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,11 +44,14 @@ export function NewReview({ styles }: { styles: Style[] }) {
   const [dragging, setDragging] = useState(false);
   const [sourceText, setSourceText] = useState("");
   const [briefNote, setBriefNote] = useState("");
+  const [campaignId, setCampaignId] = useState("");
+  const [newCampaignName, setNewCampaignName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
 
   const spec = CONTENT_TYPES.find((type) => type.value === contentType)!;
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === campaignId) ?? null;
 
   async function attach(next: File | null) {
     setError(null);
@@ -98,6 +109,11 @@ export function NewReview({ styles }: { styles: Style[] }) {
     if (styleId) body.set("styleId", styleId);
     if (sourceText.trim()) body.set("sourceText", sourceText.trim());
     if (briefNote.trim()) body.set("briefNote", briefNote.trim());
+    if (campaignId === NEW_CAMPAIGN) {
+      if (newCampaignName.trim()) body.set("newCampaignName", newCampaignName.trim());
+    } else if (campaignId) {
+      body.set("campaignId", campaignId);
+    }
     if (file) body.set("file", file);
 
     try {
@@ -278,9 +294,56 @@ export function NewReview({ styles }: { styles: Style[] }) {
         </div>
       </section>
 
+      <section>
+        <p className="u-eyebrow mb-3">3 — Is this part of something bigger?</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field
+            label="Campaign"
+            hint={
+              selectedCampaign
+                ? `Texter will read the ${selectedCampaign.pieceCount} piece${selectedCampaign.pieceCount === 1 ? "" : "s"} already in this campaign — the offer, the dates, the answers you gave — and stop asking about them.`
+                : "Link this to the email, banner or post it belongs with and Texter carries everything across."
+            }
+          >
+            <Select value={campaignId} onChange={(event) => setCampaignId(event.target.value)}>
+              <option value="">On its own — nothing to link</option>
+              {campaigns.map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.name} ({campaign.pieceCount} piece{campaign.pieceCount === 1 ? "" : "s"})
+                </option>
+              ))}
+              <option value={NEW_CAMPAIGN}>Start a new campaign…</option>
+            </Select>
+          </Field>
+
+          {campaignId === NEW_CAMPAIGN ? (
+            <Field label="Name the campaign" hint="Whatever the team calls it. Spring Sale, Black Friday, Q3 launch.">
+              <Input
+                value={newCampaignName}
+                onChange={(event) => setNewCampaignName(event.target.value)}
+                placeholder="Spring Sale"
+                autoFocus
+              />
+            </Field>
+          ) : selectedCampaign ? (
+            <div className="rounded-md border border-accent-line bg-accent-soft/50 p-4">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+                <Link2 className="size-3.5 text-accent" aria-hidden />
+                Carrying over from {selectedCampaign.name}
+              </p>
+              {selectedCampaign.lastPiece ? (
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+                  Most recent: {selectedCampaign.lastPiece}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-2">
         <div>
-          <p className="u-eyebrow mb-3">3 — Pick the voice</p>
+          <p className="u-eyebrow mb-3">4 — Pick the voice</p>
           <Select value={styleId} onChange={(event) => setStyleId(event.target.value)}>
             {styles.map((style) => (
               <option key={style.id} value={style.id}>

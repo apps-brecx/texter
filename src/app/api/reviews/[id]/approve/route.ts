@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { apiContext, HttpError, route } from "@/lib/guard";
-import { outputToText } from "@/lib/ai/review";
+import { outputToText } from "@/lib/ai/format";
 import { learnFromEdit } from "@/lib/ai/brain";
 import type { Output } from "@/lib/ai/types";
 

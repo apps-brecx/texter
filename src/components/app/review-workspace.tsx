@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { Alert, Badge, Card, CardHeader } from "@/components/ui/surface";
 import { CopyButton } from "@/components/app/copy-button";
+import { CampaignPanel, type Sibling } from "@/components/app/campaign-panel";
 import { Mark } from "@/components/brand/mark";
 import { isPdf } from "@/lib/upload";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,9 @@ export type ReviewData = {
   answers: Record<string, string>;
   output: Output | null;
   approvedText: string | null;
+  campaign: { id: string; name: string; brief: string | null } | null;
+  siblings: Sibling[];
+  campaignOptions: { id: string; name: string }[];
 };
 
 export function ReviewWorkspace({ review }: { review: ReviewData }) {
@@ -50,6 +54,9 @@ export function ReviewWorkspace({ review }: { review: ReviewData }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "writing" | "revising" | "approving">(null);
   const [learned, setLearned] = useState<number | null>(null);
+
+  // Nothing was attached and nothing was pasted — an empty panel is just noise.
+  const hasSource = Boolean(review.assetId || review.sourceText || review.briefNote || review.imageRead);
 
   async function call(path: string, body: unknown) {
     setError(null);
@@ -105,7 +112,13 @@ export function ReviewWorkspace({ review }: { review: ReviewData }) {
   return (
     <div className="mx-auto grid max-w-6xl gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-8 lg:px-10 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-4 xl:sticky xl:top-8 xl:self-start">
-        <SourcePanel review={review} />
+        {hasSource ? <SourcePanel review={review} /> : null}
+        <CampaignPanel
+          reviewId={review.id}
+          campaign={review.campaign}
+          siblings={review.siblings}
+          options={review.campaignOptions}
+        />
         <IssuePanel issues={review.issues} />
       </div>
 

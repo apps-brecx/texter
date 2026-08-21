@@ -21,28 +21,67 @@ const STAGE = {
 
 export default async function HistoryPage({ searchParams }: PageProps<"/history">) {
   const { workspace } = await requireWorkspace();
-  const { type } = await searchParams;
+  const { type, campaign: campaignId } = await searchParams;
 
   const filter = CONTENT_TYPES.find((spec) => spec.value === type)?.value as ContentType | undefined;
 
-  const reviews = await db.review.findMany({
-    where: { workspaceId: workspace.id, ...(filter ? { contentType: filter } : {}) },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: { author: { select: { name: true } }, style: { select: { name: true } } },
-  });
+  const [reviews, campaigns] = await Promise.all([
+    db.review.findMany({
+      where: {
+        workspaceId: workspace.id,
+        ...(filter ? { contentType: filter } : {}),
+        ...(typeof campaignId === "string" && campaignId ? { campaignId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        author: { select: { name: true } },
+        style: { select: { name: true } },
+        campaign: { select: { id: true, name: true } },
+      },
+    }),
+    db.campaign.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      include: { _count: { select: { reviews: true } } },
+    }),
+  ]);
+
+  const activeCampaign = campaigns.find((campaign) => campaign.id === campaignId) ?? null;
 
   return (
     <>
       <PageHeader
-        eyebrow="History"
-        title="Everything the desk has seen"
-        description="Every review stays here with its questions, answers and the version that actually shipped."
+        eyebrow={activeCampaign ? "Campaign" : "History"}
+        title={activeCampaign ? activeCampaign.name : "Everything the desk has seen"}
+        description={
+          activeCampaign
+            ? activeCampaign.brief ??
+              "Every piece in this campaign. Each one was written knowing what the others already said."
+            : "Every review stays here with its questions, answers and the version that actually shipped."
+        }
       />
 
       <PageBody className="space-y-4">
+        {campaigns.length > 0 ? (
+          <div>
+            <p className="u-eyebrow mb-2">Campaigns</p>
+            <div className="flex flex-wrap gap-1.5">
+              {campaigns.map((campaign) => (
+                <FilterChip
+                  key={campaign.id}
+                  href={activeCampaign?.id === campaign.id ? "/history" : `/history?campaign=${campaign.id}`}
+                  active={activeCampaign?.id === campaign.id}
+                  label={`${campaign.name} · ${campaign._count.reviews}`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-1.5">
-          <FilterChip href="/history" active={!filter} label="Everything" />
+          <FilterChip href="/history" active={!filter && !activeCampaign} label="Everything" />
           {CONTENT_TYPES.map((spec) => (
             <FilterChip
               key={spec.value}
@@ -79,6 +118,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
                         <span className="block truncate text-[14px] font-medium text-ink">{review.title}</span>
                         <span className="block text-[12px] text-muted">
                           {specFor(review.contentType).label}
+                          {review.campaign ? ` · ${review.campaign.name}` : ""}
                           {review.style ? ` · ${review.style.name}` : ""} · {review.author.name} ·{" "}
                           {timeAgo(review.createdAt)}
                         </span>

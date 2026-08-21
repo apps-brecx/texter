@@ -90,11 +90,13 @@ export function analysisPrompt({
   sourceText,
   briefNote,
   attached,
+  campaign,
 }: {
   contentType: ContentType;
   sourceText: string | null;
   briefNote: string | null;
   attached: "image" | "pdf" | "none";
+  campaign: string | null;
 }) {
   const spec = specFor(contentType);
   const ATTACHMENT = {
@@ -110,6 +112,7 @@ export function analysisPrompt({
     ATTACHMENT[attached],
     sourceText ? `\nDraft text supplied:\n"""\n${sourceText}\n"""` : "\nNo draft text was supplied.",
     briefNote ? `\nNote from the person asking:\n"""\n${briefNote}\n"""` : "",
+    campaign ? `\n${campaign}` : "",
     "",
     "Do two things.",
     "",
@@ -123,6 +126,15 @@ export function analysisPrompt({
     "   must change what you write. Offer likely answers as options where you can guess",
     "   sensibly — the person should usually be able to just click. Never ask something the",
     "   draft, the image or the workspace notes already answer.",
+    campaign
+      ? [
+          "   This piece belongs to a campaign, and earlier pieces are quoted above. Anything",
+          "   they already settled — the offer, the dates, the audience, the CTA, the product",
+          "   names — is known. Do not ask about it. Ask only what is genuinely new for this",
+          "   format: what this piece has to do that the others didn't. If the campaign answers",
+          "   everything, ask one or two questions at most.",
+        ].join("\n")
+      : "",
     "",
     "Reply with JSON only, in this shape:",
     JSON.stringify(
@@ -164,6 +176,7 @@ export function generationPrompt({
   briefNote,
   understanding,
   answers,
+  campaign,
   previousOutput,
   revisionNote,
 }: {
@@ -172,6 +185,7 @@ export function generationPrompt({
   briefNote: string | null;
   understanding: string;
   answers: { question: string; answer: string }[];
+  campaign: string | null;
   previousOutput?: string;
   revisionNote?: string;
 }) {
@@ -182,6 +196,7 @@ export function generationPrompt({
     `What this piece is for: ${understanding}`,
     sourceText ? `\nThe draft you are replacing:\n"""\n${sourceText}\n"""` : "",
     briefNote ? `\nNote from the person asking:\n"""\n${briefNote}\n"""` : "",
+    campaign ? `\n${campaign}` : "",
     "",
     "Answers you asked for:",
     ...answers.map(({ question, answer }) => `- ${question}\n  -> ${answer || "(left blank — use your judgement and say so in watchOuts)"}`),
@@ -201,6 +216,17 @@ export function generationPrompt({
     "",
     "Rules for the output:",
     "- Respect every character limit. Count them.",
+    ...(campaign
+      ? [
+          "- This is one piece of a campaign. The offer, dates, prices, product names and",
+          "  claims must match the pieces quoted above exactly. A different discount or a",
+          "  different date is a bug, not a variation.",
+          "- Match their voice, but write fresh sentences. Someone who sees the email and",
+          "  then the banner should recognise the campaign, not notice the copy-paste.",
+          "- If this piece has to contradict something already shipped, don't silently do it —",
+          "  write the copy the brief demands and flag the conflict in watchOuts.",
+        ]
+      : []),
     "- Give alternates for the fields where a person would want a choice.",
     "- If text appears in the attached artwork or PDF and should change, put it in artworkFixes.",
     "- watchOuts is for anything you had to assume, or a claim someone should verify.",

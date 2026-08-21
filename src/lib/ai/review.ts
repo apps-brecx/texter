@@ -6,6 +6,7 @@ import { isPdf } from "@/lib/upload";
 import { analysisPrompt, generationPrompt, systemPrompt } from "@/lib/ai/prompts";
 import { AnalysisSchema, OutputSchema, type Analysis, type Output, type Question } from "@/lib/ai/types";
 import { loadBrain, markBrainUsed } from "@/lib/ai/brain";
+import { campaignMemory } from "@/lib/ai/campaign";
 
 async function context(workspaceId: string, contentType: ContentType, styleId: string | null) {
   const [workspace, brain, style] = await Promise.all([
@@ -34,7 +35,10 @@ async function attachmentFor(assetId: string | null): Promise<Attachment> {
 /** Phase 1: read what came in, flag what's wrong, work out what's missing. */
 export async function runAnalysis(review: Review): Promise<Analysis> {
   const { workspace, brain, style } = await context(review.workspaceId, review.contentType, review.styleId);
-  const attachment = await attachmentFor(review.assetId);
+  const [attachment, campaign] = await Promise.all([
+    attachmentFor(review.assetId),
+    campaignMemory(review.campaignId, review.id),
+  ]);
 
   const { data, model, provider } = await generateJson(AnalysisSchema, {
     provider: workspace.aiProvider,
@@ -46,6 +50,7 @@ export async function runAnalysis(review: Review): Promise<Analysis> {
       sourceText: review.sourceText,
       briefNote: review.briefNote,
       attached: attachmentKind(attachment),
+      campaign: campaign?.text ?? null,
     }),
     ...attachment,
   });
@@ -84,7 +89,10 @@ export async function runGeneration(
   revision?: { note: string },
 ): Promise<Output> {
   const { workspace, brain, style } = await context(review.workspaceId, review.contentType, review.styleId);
-  const attachment = await attachmentFor(review.assetId);
+  const [attachment, campaign] = await Promise.all([
+    attachmentFor(review.assetId),
+    campaignMemory(review.campaignId, review.id),
+  ]);
 
   const questions = (review.questions as Question[] | null) ?? [];
   const stored = (review.answers as Record<string, string> | null) ?? {};
@@ -104,6 +112,7 @@ export async function runGeneration(
         question: question.question,
         answer: answers[question.id] ?? "",
       })),
+      campaign: campaign?.text ?? null,
       previousOutput: revision ? JSON.stringify(review.output) : undefined,
       revisionNote: revision?.note,
     }),
@@ -128,10 +137,4 @@ export async function runGeneration(
 function attachmentKind({ images, documents }: Attachment): "image" | "pdf" | "none" {
   if (documents.length > 0) return "pdf";
   return images.length > 0 ? "image" : "none";
-}
-
-/** Flattens the output into the plain text a person would paste somewhere. */
-export function outputToText(output: Output | null): string {
-  if (!output) return "";
-  return output.fields.map((field) => `${field.label}: ${field.value}`).join("\n\n");
 }

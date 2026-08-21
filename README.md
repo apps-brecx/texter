@@ -31,6 +31,29 @@ taught it, asks the questions it actually needs answered, then writes.
 6. **You approve** — and if you edited anything first, it works out *why* and
    proposes new house rules.
 
+## Campaigns — pieces that know about each other
+
+A promotion is never one piece. The launch email, the homepage banner and the
+Instagram post all have to agree on the offer, the dates and the deadline, and
+answering the same three questions for each of them is where the time goes.
+
+Link a review to a campaign and Texter reads everything already in it before it
+writes: what each earlier piece was for, the answers a human gave, and the copy
+that actually shipped. That changes both halves of the job:
+
+- **It stops asking what it already knows.** If the email established "30% off,
+  March 3–7, past customers", the banner doesn't ask again — it asks the one
+  thing that's new, like how much room the artwork leaves for a subhead.
+- **It stops contradicting itself.** The offer, dates, prices, product names and
+  claims have to match what shipped. A different discount is treated as a bug,
+  not a variation. It still writes fresh sentences, so the campaign reads
+  consistent rather than copy-pasted — and if a brief genuinely conflicts with
+  something already out the door, it flags that instead of quietly picking one.
+
+Start a campaign from the new-review screen, or link a review to one afterwards
+from the review itself. Every piece shows its siblings and their status, and
+History filters by campaign.
+
 ## The brain
 
 Every workspace has one, and it goes into the prompt on every single review.

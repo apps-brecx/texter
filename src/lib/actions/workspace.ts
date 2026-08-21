@@ -221,3 +221,45 @@ export async function updateProfile(_prev: FormState, formData: FormData): Promi
   revalidatePath("/settings");
   return { notice: "Profile saved." };
 }
+
+/** Attaches an existing review to a campaign after the fact. */
+export async function setReviewCampaign(formData: FormData) {
+  const { workspace } = await requireWorkspace();
+  const reviewId = String(formData.get("reviewId") ?? "");
+  const raw = String(formData.get("campaignId") ?? "");
+
+  const review = await db.review.findFirst({ where: { id: reviewId, workspaceId: workspace.id } });
+  if (!review) return;
+
+  let campaignId: string | null = null;
+  if (raw && raw !== "none") {
+    const campaign = await db.campaign.findFirst({
+      where: { id: raw, workspaceId: workspace.id },
+      select: { id: true },
+    });
+    campaignId = campaign?.id ?? null;
+  }
+
+  await db.review.update({ where: { id: review.id }, data: { campaignId } });
+  revalidatePath(`/reviews/${review.id}`);
+}
+
+export async function createCampaign(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { workspace } = await requireWorkspace();
+  const parsed = z
+    .object({
+      name: z.string().trim().min(2, "Give the campaign a name.").max(80),
+      brief: z.string().trim().max(2_000).optional().or(z.literal("")),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  await db.campaign.upsert({
+    where: { workspaceId_name: { workspaceId: workspace.id, name: parsed.data.name } },
+    create: { workspaceId: workspace.id, name: parsed.data.name, brief: parsed.data.brief || null },
+    update: { brief: parsed.data.brief || undefined },
+  });
+
+  revalidatePath("/history");
+  return { notice: `${parsed.data.name} saved.` };
+}

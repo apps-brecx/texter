@@ -82,6 +82,7 @@ model Workspace {
   members     Membership[]
   invites     Invite[]
   reviews     Review[]
+  campaigns   Campaign[]
   styles      StyleProfile[]
   brainEntries BrainEntry[]
   assets      Asset[]
@@ -191,6 +192,29 @@ model BrainEntry {
   @@index([workspaceId, status])
 }
 
+// ------------------------------------------------------------ campaigns
+
+/**
+ * A promotion that spans several pieces — the launch email, the banner, the
+ * Instagram post. Grouping them is what lets a later piece read what the
+ * earlier ones already established, so the brain stops asking the same
+ * questions twice and the copy stops contradicting itself.
+ */
+model Campaign {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  brief       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reviews   Review[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
 // ---------------------------------------------------------------- work
 
 enum ContentType {
@@ -234,6 +258,7 @@ model Review {
   authorId    String
   assetId     String?
   styleId     String?
+  campaignId  String?
 
   title       String
   contentType ContentType @default(EMAIL)
@@ -264,9 +289,11 @@ model Review {
   author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   asset     Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
   style     StyleProfile? @relation(fields: [styleId], references: [id], onDelete: SetNull)
+  campaign  Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, createdAt])
   @@index([authorId])
+  @@index([campaignId])
 }
 
 model ActivityLog {

@@ -15,6 +15,9 @@ const Body = z.object({
   styleId: z.string().optional(),
   sourceText: z.string().max(20_000).optional(),
   briefNote: z.string().max(4_000).optional(),
+  /** An existing campaign to join, or a name to start a new one. */
+  campaignId: z.string().optional(),
+  newCampaignName: z.string().trim().min(2).max(80).optional(),
 });
 
 export const POST = route(async (request: Request) => {
@@ -26,6 +29,8 @@ export const POST = route(async (request: Request) => {
     styleId: form.get("styleId") || undefined,
     sourceText: form.get("sourceText") || undefined,
     briefNote: form.get("briefNote") || undefined,
+    campaignId: form.get("campaignId") || undefined,
+    newCampaignName: form.get("newCampaignName") || undefined,
   });
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
 
@@ -83,12 +88,15 @@ export const POST = route(async (request: Request) => {
         select: { id: true },
       });
 
+  const campaignId = await resolveCampaign(workspace.id, parsed.data.campaignId, parsed.data.newCampaignName);
+
   const review = await db.review.create({
     data: {
       workspaceId: workspace.id,
       authorId: user.id,
       assetId,
       styleId: style?.id ?? null,
+      campaignId,
       title: hasFile ? file.name.replace(/\.[^.]+$/, "").slice(0, 120) : "Untitled review",
       contentType: parsed.data.contentType,
       sourceText: parsed.data.sourceText?.trim() || null,
@@ -115,3 +123,33 @@ export const POST = route(async (request: Request) => {
 
   return NextResponse.json({ id: review.id });
 });
+
+/**
+ * Joins an existing campaign or starts one. Names are unique per workspace, so
+ * typing a name that already exists joins it rather than failing — which is
+ * what someone means when they type "Spring Sale" twice.
+ */
+async function resolveCampaign(
+  workspaceId: string,
+  campaignId: string | undefined,
+  newName: string | undefined,
+) {
+  if (campaignId) {
+    const existing = await db.campaign.findFirst({
+      where: { id: campaignId, workspaceId },
+      select: { id: true },
+    });
+    if (!existing) throw new HttpError(404, "That campaign is gone.");
+    return existing.id;
+  }
+
+  if (!newName) return null;
+
+  const campaign = await db.campaign.upsert({
+    where: { workspaceId_name: { workspaceId, name: newName } },
+    create: { workspaceId, name: newName },
+    update: {},
+    select: { id: true },
+  });
+  return campaign.id;
+}
