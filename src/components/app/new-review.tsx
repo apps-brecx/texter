@@ -3,17 +3,25 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImageUp, X } from "lucide-react";
+import { FileText, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Select, Textarea } from "@/components/ui/field";
 import { Alert, Card } from "@/components/ui/surface";
 import { Mark } from "@/components/brand/mark";
 import { CONTENT_TYPES } from "@/lib/ai/content-types";
+import {
+  ACCEPT_ATTRIBUTE,
+  formatBytes,
+  isAcceptedType,
+  isPdf,
+  limitFor,
+} from "@/lib/upload";
+import { shrinkImage } from "@/lib/shrink-image";
 import { cn } from "@/lib/utils";
 
 type Style = { id: string; name: string; tagline: string; isDefault: boolean };
 
-const STEPS = ["Reading the artwork", "Checking it against your house rules", "Working out what to ask you"];
+const STEPS = ["Reading what you sent", "Checking it against your house rules", "Working out what to ask you"];
 
 export function NewReview({ styles }: { styles: Style[] }) {
   const router = useRouter();
@@ -23,6 +31,8 @@ export function NewReview({ styles }: { styles: Style[] }) {
   const [styleId, setStyleId] = useState(styles.find((s) => s.isDefault)?.id ?? styles[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [shrunkFrom, setShrunkFrom] = useState<number | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [sourceText, setSourceText] = useState("");
   const [briefNote, setBriefNote] = useState("");
@@ -32,16 +42,49 @@ export function NewReview({ styles }: { styles: Style[] }) {
 
   const spec = CONTENT_TYPES.find((type) => type.value === contentType)!;
 
-  function attach(next: File | null) {
+  async function attach(next: File | null) {
     setError(null);
     if (preview) URL.revokeObjectURL(preview);
-    setFile(next);
-    setPreview(next ? URL.createObjectURL(next) : null);
+    setPreview(null);
+    setShrunkFrom(null);
+
+    if (!next) {
+      setFile(null);
+      return;
+    }
+
+    if (!isAcceptedType(next.type)) {
+      setFile(null);
+      setError("Texter reads PDFs and images — PNG, JPEG, WebP, GIF or AVIF.");
+      return;
+    }
+
+    const limit = limitFor(next.type);
+    if (next.size > limit) {
+      setFile(null);
+      setError(
+        isPdf(next.type)
+          ? `That PDF is ${formatBytes(next.size)}. The limit is ${formatBytes(limit)} — split it or export it smaller.`
+          : `That image is ${formatBytes(next.size)}. The limit is ${formatBytes(limit)}.`,
+      );
+      return;
+    }
+
+    // Shrinking a big photo here saves a slow upload; the server normalises
+    // again either way, so this is purely about speed.
+    setPreparing(true);
+    const original = next.size;
+    const ready = isPdf(next.type) ? next : await shrinkImage(next);
+    setPreparing(false);
+
+    setFile(ready);
+    if (ready.size < original) setShrunkFrom(original);
+    if (!isPdf(ready.type)) setPreview(URL.createObjectURL(ready));
   }
 
   async function submit() {
     if (!file && !sourceText.trim()) {
-      setError("Upload the artwork or paste the draft — Texter needs something to read.");
+      setError("Attach a file or paste the draft — Texter needs something to read.");
       return;
     }
 
@@ -139,39 +182,61 @@ export function NewReview({ styles }: { styles: Style[] }) {
                 event.preventDefault();
                 setDragging(false);
                 const dropped = event.dataTransfer.files?.[0];
-                if (dropped?.type.startsWith("image/")) attach(dropped);
+                if (dropped) void attach(dropped);
               }}
               className={cn(
                 "relative flex min-h-[220px] flex-col items-center justify-center rounded-card border border-dashed p-6 text-center transition-colors",
                 dragging ? "border-accent bg-accent-soft" : "border-line-strong bg-surface-2",
               )}
             >
-              {preview ? (
+              {preparing ? (
                 <>
-                  <Image
-                    src={preview}
-                    alt="The artwork you attached"
-                    width={640}
-                    height={400}
-                    unoptimized
-                    className="max-h-[240px] w-auto rounded-lg border border-line object-contain"
-                  />
+                  <Loader2 className="size-5 animate-spin text-accent" aria-hidden />
+                  <p className="mt-3 text-[13.5px] font-medium text-ink">Getting it ready…</p>
+                </>
+              ) : file ? (
+                <>
+                  {preview ? (
+                    <Image
+                      src={preview}
+                      alt="The artwork you attached"
+                      width={640}
+                      height={400}
+                      unoptimized
+                      className="max-h-[240px] w-auto rounded-sm border border-line object-contain"
+                    />
+                  ) : (
+                    <span className="flex size-16 items-center justify-center rounded-md border border-line bg-surface text-danger">
+                      <FileText className="size-7" aria-hidden />
+                    </span>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => attach(null)}
-                    className="absolute top-3 right-3 grid size-7 place-items-center rounded-full border border-line bg-surface text-muted shadow-card transition-colors hover:text-ink"
-                    aria-label="Remove image"
+                    onClick={() => void attach(null)}
+                    className="u-tap absolute top-3 right-3 grid size-7 place-items-center rounded-full border border-line bg-surface text-muted shadow-card transition-colors hover:text-ink"
+                    aria-label="Remove file"
                   >
                     <X className="size-3.5" aria-hidden />
                   </button>
-                  <p className="mt-3 truncate text-[12px] text-muted">{file?.name}</p>
+
+                  <p className="mt-3 max-w-full truncate text-[12.5px] font-medium text-ink">
+                    {file.name}
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] text-muted">
+                    {isPdf(file.type) ? "PDF · every page gets read" : "Image"} ·{" "}
+                    {formatBytes(file.size)}
+                    {shrunkFrom ? ` · shrunk from ${formatBytes(shrunkFrom)}` : ""}
+                  </p>
                 </>
               ) : (
                 <>
-                  <ImageUp className="size-6 text-faint" aria-hidden />
-                  <p className="mt-3 text-[14px] font-medium text-ink">Drop the artwork here</p>
-                  <p className="mt-1 text-[12.5px] text-muted">
-                    PNG, JPEG, WebP or GIF, up to 8 MB. Texter reads every word in it.
+                  <Upload className="size-6 text-faint" aria-hidden />
+                  <p className="mt-3 text-[14px] font-semibold text-ink">Drop the artwork here</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+                    PDF or image. Texter reads every word in it — all pages of a PDF.
+                    <br />
+                    Big photos are shrunk automatically.
                   </p>
                   <Button
                     type="button"
@@ -187,9 +252,9 @@ export function NewReview({ styles }: { styles: Style[] }) {
               <input
                 ref={inputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept={ACCEPT_ATTRIBUTE}
                 className="hidden"
-                onChange={(event) => attach(event.target.files?.[0] ?? null)}
+                onChange={(event) => void attach(event.target.files?.[0] ?? null)}
               />
             </div>
           ) : null}
@@ -199,7 +264,7 @@ export function NewReview({ styles }: { styles: Style[] }) {
             hint={
               spec.accepts === "text"
                 ? "Paste whatever exists today. Leave it empty if you're starting from nothing."
-                : "Optional if the words are already in the image."
+                : "Optional if the words are already in the file you attached."
             }
             className={spec.accepts === "text" ? "lg:col-span-2" : undefined}
           >

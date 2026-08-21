@@ -9,6 +9,7 @@ import {
   Brain,
   CircleAlert,
   Info,
+  ExternalLink,
   PenLine,
   RefreshCw,
   Sparkles,
@@ -18,6 +19,7 @@ import { Field, Input, Textarea } from "@/components/ui/field";
 import { Alert, Badge, Card, CardHeader } from "@/components/ui/surface";
 import { CopyButton } from "@/components/app/copy-button";
 import { Mark } from "@/components/brand/mark";
+import { isPdf } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 import type { Issue, Output, Question } from "@/lib/ai/types";
 
@@ -29,6 +31,8 @@ export type ReviewData = {
   sourceText: string | null;
   briefNote: string | null;
   assetId: string | null;
+  assetMime: string | null;
+  assetName: string | null;
   styleName: string | null;
   modelUsed: string | null;
   imageRead: { description: string; textFound: string[]; visualTone: string } | null;
@@ -140,16 +144,7 @@ function SourcePanel({ review }: { review: ReviewData }) {
     <Card>
       <CardHeader title="What came in" description={review.briefNote ?? undefined} />
       <div className="space-y-4 p-5">
-        {review.assetId ? (
-          <Image
-            src={`/api/assets/${review.assetId}`}
-            alt={`Artwork for ${review.title}`}
-            width={760}
-            height={520}
-            unoptimized
-            className="w-full rounded-lg border border-line bg-surface-2 object-contain"
-          />
-        ) : null}
+        {review.assetId ? <AssetPreview review={review} /> : null}
 
         {review.sourceText ? (
           <div>
@@ -177,6 +172,46 @@ function SourcePanel({ review }: { review: ReviewData }) {
         ) : null}
       </div>
     </Card>
+  );
+}
+
+function AssetPreview({ review }: { review: ReviewData }) {
+  const href = `/api/assets/${review.assetId}`;
+
+  // A PDF can't go in an <img>. Browsers that refuse to render one inline fall
+  // back to the link underneath, which always works.
+  if (isPdf(review.assetMime)) {
+    return (
+      <div>
+        <object data={href} type="application/pdf" className="h-[420px] w-full rounded-sm border border-line bg-surface-2">
+          <div className="grid h-full place-items-center px-6 text-center">
+            <p className="text-[13px] text-muted">
+              Your browser won&apos;t preview PDFs here.
+            </p>
+          </div>
+        </object>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="u-tap mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-accent hover:underline"
+        >
+          <ExternalLink className="size-3.5" aria-hidden />
+          Open {review.assetName ?? "the PDF"} in a new tab
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={href}
+      alt={`Artwork for ${review.title}`}
+      width={760}
+      height={520}
+      unoptimized
+      className="w-full rounded-sm border border-line bg-surface-2 object-contain"
+    />
   );
 }
 

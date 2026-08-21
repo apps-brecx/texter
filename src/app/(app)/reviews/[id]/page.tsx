@@ -22,7 +22,11 @@ export default async function ReviewPage({ params }: PageProps<"/reviews/[id]">)
 
   const review = await db.review.findFirst({
     where: { id, workspaceId: workspace.id },
-    include: { style: { select: { name: true } }, author: { select: { name: true } } },
+    include: {
+      style: { select: { name: true } },
+      author: { select: { name: true } },
+      asset: { select: { mimeType: true, filename: true } },
+    },
   });
   if (!review) notFound();
 
@@ -36,6 +40,8 @@ export default async function ReviewPage({ params }: PageProps<"/reviews/[id]">)
     sourceText: review.sourceText,
     briefNote: review.briefNote,
     assetId: review.assetId,
+    assetMime: review.asset?.mimeType ?? null,
+    assetName: review.asset?.filename ?? null,
     styleName: review.style?.name ?? null,
     modelUsed: review.modelUsed,
     imageRead: (review.imageRead as ReviewData["imageRead"]) ?? null,

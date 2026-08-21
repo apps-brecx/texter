@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 
 export type ImageInput = { mediaType: string; base64: string };
+export type DocumentInput = { filename: string; base64: string };
 
 export type CallOptions = {
   provider: string;
@@ -11,6 +12,8 @@ export type CallOptions = {
   system: string;
   prompt: string;
   images?: ImageInput[];
+  /** PDFs. Both providers read them natively, pages and all. */
+  documents?: DocumentInput[];
   maxTokens?: number;
 };
 
@@ -32,6 +35,7 @@ export async function generateJson<T extends z.ZodTypeAny>(
   const repaired = await callModel({
     ...options,
     images: undefined,
+    documents: undefined,
     prompt: [
       "Your previous reply could not be used. Return the corrected JSON only.",
       "",
@@ -80,25 +84,38 @@ function extractJson(raw: string) {
   return body.slice(start, end + 1);
 }
 
-async function callModel({ provider, model, system, prompt, images = [], maxTokens = 12000 }: CallOptions) {
-  return provider === "openai"
-    ? callOpenAI({ model, system, prompt, images, maxTokens })
-    : callAnthropic({ model, system, prompt, images, maxTokens });
-}
-
-async function callAnthropic({
+async function callModel({
+  provider,
   model,
   system,
   prompt,
-  images,
-  maxTokens,
-}: Omit<CallOptions, "provider"> & { images: ImageInput[]; maxTokens: number }) {
+  images = [],
+  documents = [],
+  maxTokens = 12000,
+}: CallOptions) {
+  return provider === "openai"
+    ? callOpenAI({ model, system, prompt, images, documents, maxTokens })
+    : callAnthropic({ model, system, prompt, images, documents, maxTokens });
+}
+
+type ProviderCall = Omit<CallOptions, "provider"> & {
+  images: ImageInput[];
+  documents: DocumentInput[];
+  maxTokens: number;
+};
+
+async function callAnthropic({ model, system, prompt, images, documents, maxTokens }: ProviderCall) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new AiConfigError("ANTHROPIC_API_KEY is not set. Add it in your environment and restart.");
   }
   const client = new Anthropic();
 
   const content: Anthropic.ContentBlockParam[] = [
+    ...documents.map<Anthropic.ContentBlockParam>((document) => ({
+      type: "document",
+      title: document.filename,
+      source: { type: "base64", media_type: "application/pdf", data: document.base64 },
+    })),
     ...images.map<Anthropic.ContentBlockParam>((image) => ({
       type: "image",
       source: {
@@ -126,13 +143,7 @@ async function callAnthropic({
     .join("\n");
 }
 
-async function callOpenAI({
-  model,
-  system,
-  prompt,
-  images,
-  maxTokens,
-}: Omit<CallOptions, "provider"> & { images: ImageInput[]; maxTokens: number }) {
+async function callOpenAI({ model, system, prompt, images, documents, maxTokens }: ProviderCall) {
   if (!process.env.OPENAI_API_KEY) {
     throw new AiConfigError("OPENAI_API_KEY is not set. Add it in your environment and restart.");
   }
@@ -147,6 +158,13 @@ async function callOpenAI({
       {
         role: "user",
         content: [
+          ...documents.map((document) => ({
+            type: "file" as const,
+            file: {
+              filename: document.filename,
+              file_data: `data:application/pdf;base64,${document.base64}`,
+            },
+          })),
           ...images.map((image) => ({
             type: "image_url" as const,
             image_url: { url: `data:${image.mediaType};base64,${image.base64}` },

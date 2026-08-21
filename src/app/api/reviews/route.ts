@@ -4,9 +4,8 @@ import { db } from "@/lib/db";
 import { apiContext, HttpError, route } from "@/lib/guard";
 import { runAnalysis } from "@/lib/ai/review";
 import { AiConfigError } from "@/lib/ai/provider";
-
-const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+import { normalizeImage } from "@/lib/normalize-image";
+import { formatBytes, isAcceptedType, isPdf, limitFor } from "@/lib/upload";
 
 const Body = z.object({
   contentType: z.enum([
@@ -33,21 +32,40 @@ export const POST = route(async (request: Request) => {
   const file = form.get("file");
   const hasFile = file instanceof File && file.size > 0;
   if (!hasFile && !parsed.data.sourceText?.trim()) {
-    throw new HttpError(400, "Upload an image or paste the draft text — Texter needs something to read.");
+    throw new HttpError(400, "Attach a file or paste the draft text — Texter needs something to read.");
   }
 
   let assetId: string | null = null;
   if (hasFile) {
-    if (file.size > MAX_BYTES) throw new HttpError(413, "That image is over 8 MB. Export it smaller and try again.");
-    if (!ALLOWED.includes(file.type)) throw new HttpError(415, "Upload a PNG, JPEG, WebP or GIF.");
+    if (!isAcceptedType(file.type)) {
+      throw new HttpError(415, "Upload a PDF, PNG, JPEG, WebP, GIF or AVIF.");
+    }
+
+    const limit = limitFor(file.type);
+    if (file.size > limit) {
+      throw new HttpError(
+        413,
+        isPdf(file.type)
+          ? `That PDF is ${formatBytes(file.size)}. The limit is ${formatBytes(limit)} — split it or export it smaller.`
+          : `That image is ${formatBytes(file.size)}. The limit is ${formatBytes(limit)}.`,
+      );
+    }
+
+    const raw = Buffer.from(await file.arrayBuffer());
+    // PDFs go to the model exactly as supplied — every page, every word.
+    // Images get shrunk first: 2,200px is plenty to read a banner, and it keeps
+    // the row small and the request well inside the provider limits.
+    const stored = isPdf(file.type)
+      ? { data: raw, mimeType: file.type }
+      : await normalizeImage(raw, file.type);
 
     const asset = await db.asset.create({
       data: {
         workspaceId: workspace.id,
         filename: file.name.slice(0, 200),
-        mimeType: file.type,
-        bytes: file.size,
-        data: Buffer.from(await file.arrayBuffer()),
+        mimeType: stored.mimeType,
+        bytes: stored.data.byteLength,
+        data: new Uint8Array(stored.data),
       },
       select: { id: true },
     });

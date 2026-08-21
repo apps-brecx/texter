@@ -89,19 +89,25 @@ export function analysisPrompt({
   contentType,
   sourceText,
   briefNote,
-  hasImage,
+  attached,
 }: {
   contentType: ContentType;
   sourceText: string | null;
   briefNote: string | null;
-  hasImage: boolean;
+  attached: "image" | "pdf" | "none";
 }) {
   const spec = specFor(contentType);
+  const ATTACHMENT = {
+    image:
+      "An image is attached. Read every word visible in it, including small print, and describe what it shows.",
+    pdf:
+      "A PDF is attached. Read every page. Transcribe every word it contains — headings, body, captions, footnotes, small print — and describe what each page shows. If pages differ, say which page each piece of text is on.",
+    none: "Nothing was attached.",
+  } as const;
+
   return [
     `Read what has been handed to you for a ${spec.label.toLowerCase()} and prepare to rewrite it.`,
-    hasImage
-      ? "An image is attached. Read every word visible in it, including small print, and describe what it shows."
-      : "No image was attached.",
+    ATTACHMENT[attached],
     sourceText ? `\nDraft text supplied:\n"""\n${sourceText}\n"""` : "\nNo draft text was supplied.",
     briefNote ? `\nNote from the person asking:\n"""\n${briefNote}\n"""` : "",
     "",
@@ -122,9 +128,14 @@ export function analysisPrompt({
     JSON.stringify(
       {
         title: "short name for this piece",
-        readOfImage: hasImage
-          ? { description: "what the image shows", textFound: ["every string of text in the image"], visualTone: "" }
-          : null,
+        readOfImage:
+          attached === "none"
+            ? null
+            : {
+                description: "what the file shows",
+                textFound: ["every string of text in the file"],
+                visualTone: "",
+              },
         understanding: "what this piece is trying to achieve",
         issues: [
           {
@@ -191,7 +202,7 @@ export function generationPrompt({
     "Rules for the output:",
     "- Respect every character limit. Count them.",
     "- Give alternates for the fields where a person would want a choice.",
-    "- If text appears in the attached artwork and should change, put it in artworkFixes.",
+    "- If text appears in the attached artwork or PDF and should change, put it in artworkFixes.",
     "- watchOuts is for anything you had to assume, or a claim someone should verify.",
     "- Never use a word from the banned list in the house rules.",
     "",

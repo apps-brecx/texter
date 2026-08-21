@@ -16,8 +16,10 @@ taught it, asks the questions it actually needs answered, then writes.
 
 1. **Pick the format** — email, banner, Instagram, Facebook, SMS, WhatsApp,
    push, product page, landing page.
-2. **Show it the work** — drop in the banner or screenshot, paste the draft, or
-   both. It reads every word in the image, including the small print.
+2. **Show it the work** — drop in a **PDF or an image** (banner, screenshot,
+   export), paste the draft, or both. It reads every word, including the small
+   print, and every page of a PDF. Big photos are shrunk automatically on the
+   way in, so a 30 MB phone shot uploads fast and still reads fine.
 3. **It audits what exists** — each problem quoted verbatim, with the exact
    replacement and why, rated fix / tighten / nit.
 4. **It questions you** — three to six questions, sharpest first, most of them
@@ -133,6 +135,11 @@ connection limit if you scale out.
 
 Anything that runs Node works the same way — set the variables, run
 `prisma migrate deploy` during the build, then `npm start`.
+
+One caveat if you move off Render: uploads accept PDFs up to 20 MB and images
+up to 40 MB, which is larger than the request-body limit on some serverless
+platforms (Vercel caps a function request at 4.5 MB). On those, uploads need to
+go to object storage from the browser instead of through the app.
 
 ## Design
 

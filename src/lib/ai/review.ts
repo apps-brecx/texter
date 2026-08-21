@@ -1,7 +1,8 @@
 import "server-only";
 import { Prisma, type ContentType, type Review } from "@prisma/client";
 import { db } from "@/lib/db";
-import { generateJson, type ImageInput } from "@/lib/ai/provider";
+import { generateJson, type DocumentInput, type ImageInput } from "@/lib/ai/provider";
+import { isPdf } from "@/lib/upload";
 import { analysisPrompt, generationPrompt, systemPrompt } from "@/lib/ai/prompts";
 import { AnalysisSchema, OutputSchema, type Analysis, type Output, type Question } from "@/lib/ai/types";
 import { loadBrain, markBrainUsed } from "@/lib/ai/brain";
@@ -15,17 +16,25 @@ async function context(workspaceId: string, contentType: ContentType, styleId: s
   return { workspace, brain, style };
 }
 
-async function imagesFor(assetId: string | null): Promise<ImageInput[]> {
-  if (!assetId) return [];
+type Attachment = { images: ImageInput[]; documents: DocumentInput[] };
+
+const NOTHING: Attachment = { images: [], documents: [] };
+
+async function attachmentFor(assetId: string | null): Promise<Attachment> {
+  if (!assetId) return NOTHING;
   const asset = await db.asset.findUnique({ where: { id: assetId } });
-  if (!asset) return [];
-  return [{ mediaType: asset.mimeType, base64: Buffer.from(asset.data).toString("base64") }];
+  if (!asset) return NOTHING;
+
+  const base64 = Buffer.from(asset.data).toString("base64");
+  return isPdf(asset.mimeType)
+    ? { images: [], documents: [{ filename: asset.filename, base64 }] }
+    : { images: [{ mediaType: asset.mimeType, base64 }], documents: [] };
 }
 
 /** Phase 1: read what came in, flag what's wrong, work out what's missing. */
 export async function runAnalysis(review: Review): Promise<Analysis> {
   const { workspace, brain, style } = await context(review.workspaceId, review.contentType, review.styleId);
-  const images = await imagesFor(review.assetId);
+  const attachment = await attachmentFor(review.assetId);
 
   const { data, model, provider } = await generateJson(AnalysisSchema, {
     provider: workspace.aiProvider,
@@ -36,9 +45,9 @@ export async function runAnalysis(review: Review): Promise<Analysis> {
       contentType: review.contentType,
       sourceText: review.sourceText,
       briefNote: review.briefNote,
-      hasImage: images.length > 0,
+      attached: attachmentKind(attachment),
     }),
-    images,
+    ...attachment,
   });
 
   // Question ids come from the model; make sure they're unique and stable.
@@ -75,7 +84,7 @@ export async function runGeneration(
   revision?: { note: string },
 ): Promise<Output> {
   const { workspace, brain, style } = await context(review.workspaceId, review.contentType, review.styleId);
-  const images = await imagesFor(review.assetId);
+  const attachment = await attachmentFor(review.assetId);
 
   const questions = (review.questions as Question[] | null) ?? [];
   const stored = (review.answers as Record<string, string> | null) ?? {};
@@ -98,7 +107,7 @@ export async function runGeneration(
       previousOutput: revision ? JSON.stringify(review.output) : undefined,
       revisionNote: revision?.note,
     }),
-    images,
+    ...attachment,
   });
 
   await db.review.update({
@@ -114,6 +123,11 @@ export async function runGeneration(
 
   await markBrainUsed(brain.map((entry) => entry.id));
   return data;
+}
+
+function attachmentKind({ images, documents }: Attachment): "image" | "pdf" | "none" {
+  if (documents.length > 0) return "pdf";
+  return images.length > 0 ? "image" : "none";
 }
 
 /** Flattens the output into the plain text a person would paste somewhere. */
