@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
-import { PageHeader } from "@/components/app/page-header";
+import { PageBody, PageHeader } from "@/components/app/page-header";
 import {
   AiCard,
   ProfileCard,
@@ -60,7 +60,7 @@ export default async function SettingsPage() {
         description="Context, voices, people and the model behind it all."
       />
 
-      <div className="mx-auto max-w-3xl space-y-6 px-6 py-8 sm:px-10">
+      <PageBody className="mx-0 max-w-3xl space-y-4 sm:space-y-5">
         <ProfileCard name={user.name} email={user.email} />
 
         {canManage ? (
@@ -87,7 +87,7 @@ export default async function SettingsPage() {
             openaiReady={Boolean(process.env.OPENAI_API_KEY)}
           />
         ) : null}
-      </div>
+      </PageBody>
     </>
   );
 }

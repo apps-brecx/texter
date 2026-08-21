@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
 import { Badge, Card, CardHeader, Empty } from "@/components/ui/surface";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/app/page-header";
+import { PageBody, PageHeader } from "@/components/app/page-header";
 import { specFor } from "@/lib/ai/content-types";
 import type { Issue } from "@/lib/ai/types";
 import { daysAgo, greeting, timeAgo } from "@/lib/utils";
@@ -68,12 +68,12 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="space-y-6 px-6 py-8 sm:px-10">
+      <PageBody className="space-y-4 sm:space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map(({ label, value, icon: Icon }) => (
             <Card key={label} className="p-5">
               <Icon className="size-4 text-faint" aria-hidden />
-              <p className="u-display mt-3 text-[2.25rem] text-ink">{value}</p>
+              <p className="u-display mt-3 text-[30px] text-ink sm:text-[34px]">{value}</p>
               <p className="mt-0.5 text-[12.5px] text-muted">{label}</p>
             </Card>
           ))}
@@ -99,7 +99,7 @@ export default async function DashboardPage() {
           <CardHeader
             title="Recent reviews"
             action={
-              <Link href="/history" className="text-[13px] font-medium text-accent hover:underline">
+              <Link href="/history" className="text-[13px] font-semibold text-accent hover:underline">
                 See all
               </Link>
             }
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
             </ul>
           )}
         </Card>
-      </div>
+      </PageBody>
     </>
   );
 }

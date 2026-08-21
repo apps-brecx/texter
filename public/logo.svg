@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64" width="200" height="64">
+  <path fill="#17293D" d="M8 26v-.6A8.4 8.4 0 0 1 16.4 17H32v9h-7v21.5A1.5 1.5 0 0 1 23.5 49h-6A1.5 1.5 0 0 1 16 47.5V26H8Z"/>
+  <path fill="#5BBE4C" d="M29.4 27.1C29.4 19.9 35.5 14 43 14c0 7.2-6.1 13.1-13.6 13.1Z"/>
+  <text x="60" y="42" font-family="Plus Jakarta Sans, Segoe UI, Helvetica, Arial, sans-serif"
+        font-size="30" font-weight="700" letter-spacing="-0.9" fill="#17293D">Texter</text>
+</svg>

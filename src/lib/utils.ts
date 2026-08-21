@@ -1,5 +1,28 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * tailwind-merge only knows Tailwind's stock scales. Without this it can't tell
+ * `text-on-primary` (a colour) from `text-[15px]` (a size), treats them as the
+ * same group, and silently drops one — which is how a button ends up with
+ * invisible text. Every custom token from globals.css is registered here.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      color: [
+        "page", "surface", "surface-2", "surface-3",
+        "line", "line-strong",
+        "ink", "ink-soft", "muted", "faint",
+        "primary", "primary-hover", "on-primary",
+        "leaf", "accent", "accent-hover", "accent-soft", "accent-line",
+        "danger", "danger-soft", "warn", "warn-soft", "good", "good-soft",
+      ],
+      radius: ["card", "sheet"],
+      shadow: ["card", "raised", "float"],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

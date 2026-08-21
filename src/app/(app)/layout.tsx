@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
 import { Sidebar } from "@/components/app/sidebar";
+import { TopBar } from "@/components/app/top-bar";
+import { TabBar } from "@/components/app/tab-bar";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { user, workspace } = await requireWorkspace();
@@ -14,15 +16,31 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     db.brainEntry.count({ where: { workspaceId: workspace.id, status: "PENDING" } }),
   ]);
 
+  const account = { name: user.name, email: user.email };
+  const workspaces = memberships.map((membership) => ({
+    id: membership.workspace.id,
+    name: membership.workspace.name,
+    role: membership.role,
+  }));
+
   return (
-    <div className="lg:grid lg:grid-cols-[264px_1fr]">
+    <div className="lg:grid lg:grid-cols-[268px_1fr]">
       <Sidebar
-        user={{ name: user.name, email: user.email }}
-        workspaces={memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role }))}
+        user={account}
+        workspaces={workspaces}
         activeWorkspaceId={workspace.id}
         pendingLessons={pendingLessons}
       />
-      <main className="min-w-0">{children}</main>
+
+      <div className="min-w-0">
+        <TopBar user={account} workspaces={workspaces} activeWorkspaceId={workspace.id} />
+        {/* Bottom padding clears the tab bar on mobile. */}
+        <main className="min-w-0 pb-[calc(54px+env(safe-area-inset-bottom)+8px)] lg:pb-0">
+          {children}
+        </main>
+      </div>
+
+      <TabBar pendingLessons={pendingLessons} />
     </div>
   );
 }

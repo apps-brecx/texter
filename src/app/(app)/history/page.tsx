@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
 import { Badge, Card, Empty } from "@/components/ui/surface";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/app/page-header";
+import { PageBody, PageHeader } from "@/components/app/page-header";
 import { CONTENT_TYPES, specFor } from "@/lib/ai/content-types";
 import type { Issue } from "@/lib/ai/types";
 import { cn, timeAgo } from "@/lib/utils";
@@ -40,7 +40,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
         description="Every review stays here with its questions, answers and the version that actually shipped."
       />
 
-      <div className="space-y-5 px-6 py-8 sm:px-10">
+      <PageBody className="space-y-4">
         <div className="flex flex-wrap gap-1.5">
           <FilterChip href="/history" active={!filter} label="Everything" />
           {CONTENT_TYPES.map((spec) => (
@@ -96,7 +96,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
             </ul>
           )}
         </Card>
-      </div>
+      </PageBody>
     </>
   );
 }

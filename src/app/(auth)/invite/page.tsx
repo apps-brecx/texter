@@ -20,11 +20,11 @@ export default async function InvitePage({ searchParams }: PageProps<"/invite">)
   if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
     return (
       <div className="space-y-4">
-        <h1 className="u-display text-[2rem] text-ink">This invite is no longer valid</h1>
+        <h1 className="u-display text-[30px] text-ink">This invite is no longer valid</h1>
         <Alert>
           It may have been used already or expired. Ask an admin on the team to send you a fresh one.
         </Alert>
-        <Link href="/login" className="text-[13px] font-medium text-accent hover:underline">
+        <Link href="/login" className="text-[13px] font-semibold text-accent hover:underline">
           Back to sign in
         </Link>
       </div>

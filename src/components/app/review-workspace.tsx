@@ -9,7 +9,6 @@ import {
   Brain,
   CircleAlert,
   Info,
-  Loader2,
   PenLine,
   RefreshCw,
   Sparkles,
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { Alert, Badge, Card, CardHeader } from "@/components/ui/surface";
 import { CopyButton } from "@/components/app/copy-button";
+import { Mark } from "@/components/brand/mark";
 import { cn } from "@/lib/utils";
 import type { Issue, Output, Question } from "@/lib/ai/types";
 
@@ -99,7 +99,7 @@ export function ReviewWorkspace({ review }: { review: ReviewData }) {
   }
 
   return (
-    <div className="grid gap-6 px-6 py-8 sm:px-10 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+    <div className="mx-auto grid max-w-6xl gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-8 lg:px-10 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-4 xl:sticky xl:top-8 xl:self-start">
         <SourcePanel review={review} />
         <IssuePanel issues={review.issues} />
@@ -368,8 +368,8 @@ function OutputPanel({
         />
 
         {busy === "revising" ? (
-          <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-5 py-3 text-[13px] text-muted">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          <div className="flex items-center gap-2.5 border-b border-line bg-surface-2 px-5 py-3 text-[13px] font-medium text-muted">
+            <Mark className="size-4" animate="breathe" />
             Rewriting…
           </div>
         ) : null}

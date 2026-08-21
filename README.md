@@ -134,8 +134,39 @@ connection limit if you scale out.
 Anything that runs Node works the same way — set the variables, run
 `prisma migrate deploy` during the build, then `npm start`.
 
+## Design
+
+Two colours, both taken from the logo: **navy `#17293D`** for structure and
+type, **leaf green `#5BBE4C`** for the spark. Primary buttons are inverted —
+navy on a light page, near-white on a dark one — which never fails contrast and
+leaves green free to mean "this is live". Every value is a CSS variable in
+`src/app/globals.css`; `--brand-navy` and `--brand-leaf` at the top feed the
+rest, so re-tinting the whole app is a two-line change.
+
+Type is **Plus Jakarta Sans** throughout with **Geist Mono** for copy blocks and
+diffs. Light and dark are both first-class: the theme follows the system by
+default and the toggle in Settings overrides it, applied before first paint so
+there's no white flash.
+
+The mark is drawn as inline SVG (`src/components/brand/mark.tsx`) rather than
+imported, so the T inherits the current text colour, the leaf keeps the brand
+green, and the loader can animate the two separately — the leaf springs off the
+arm on mount and breathes while the AI is working.
+
+## Mobile
+
+Built as a web app that behaves like a native one:
+
+- Bottom tab bar with a raised **New** action, safe-area aware, frosted.
+- iOS large titles, sheets that slide up from the bottom, tap-scale feedback,
+  no grey tap highlight, no rubber-band behind fixed chrome.
+- Add to Home Screen works — manifest, apple-touch icon, theme colour per
+  scheme, `viewport-fit=cover` so it paints under the notch.
+- Inputs are 16px minimum, because anything smaller makes iOS zoom on focus.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Prisma 7 ·
-PostgreSQL · Anthropic and OpenAI SDKs · session cookies backed by rows in the
-database, so a password change signs every device out.
+PostgreSQL · Anthropic and OpenAI SDKs · Plus Jakarta Sans + Geist Mono ·
+session cookies backed by rows in the database, so a password change signs every
+device out.

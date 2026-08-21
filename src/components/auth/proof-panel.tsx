@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Logo } from "@/components/ui/logo";
+import { Mark, Wordmark } from "@/components/brand/mark";
 
 const FIXES = [
   {
@@ -22,30 +22,41 @@ const FIXES = [
 ];
 
 const rise = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 14 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: 0.15 + i * 0.12, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: 0.6, delay: 0.35 + i * 0.11, ease: [0.16, 1, 0.3, 1] as const },
   }),
 };
 
+/**
+ * The brand panel stays navy in both themes — it *is* the brand colour, the
+ * same way the logo's T is.
+ */
 export function ProofPanel() {
   return (
-    <aside className="u-grain relative hidden flex-col justify-center gap-14 overflow-hidden border-r border-line bg-surface-2 px-12 py-12 lg:flex">
+    <aside className="relative hidden flex-col justify-center gap-12 overflow-hidden bg-[#17293d] px-12 py-14 lg:flex">
       <div
         aria-hidden
-        className="absolute inset-0 opacity-[0.5] [background-image:linear-gradient(var(--line)_1px,transparent_1px)] [background-size:100%_28px] [mask-image:linear-gradient(to_bottom,transparent,black_55%)]"
+        className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:56px_56px]"
+      />
+      <div
+        aria-hidden
+        className="absolute -top-24 -right-24 size-[380px] rounded-full bg-[#5bbe4c]/15 blur-3xl"
       />
 
       <div className="relative">
-        <Logo className="lg:hidden" />
-        <p className="u-eyebrow">The copy desk</p>
-        <h1 className="u-display mt-4 max-w-md text-[2.75rem] text-ink">
+        <span className="inline-flex items-center gap-2.5">
+          <Mark className="size-9 text-white" animate="grow" />
+          <Wordmark className="text-[26px] !text-white" />
+        </span>
+
+        <h1 className="u-display mt-9 max-w-md text-[2.75rem] text-white">
           Correct English isn&apos;t the same as{" "}
-          <span className="text-accent">American English</span>.
+          <span className="text-[#7ad46a]">American English</span>.
         </h1>
-        <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-muted">
+        <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/65">
           Upload the artwork or paste the draft. Texter reads it, asks the handful of
           questions it actually needs, then writes copy that sounds like it came from
           down the hall — not from a translation.
@@ -60,13 +71,15 @@ export function ProofPanel() {
             initial="hidden"
             animate="show"
             variants={rise}
-            className="rounded-card border border-line bg-surface p-4 shadow-card"
+            className="rounded-card border border-white/10 bg-white/[0.06] p-4 backdrop-blur-sm"
           >
-            <p className="u-eyebrow mb-2.5">{fix.label}</p>
-            <p className="font-mono text-[12.5px] leading-relaxed text-muted line-through decoration-danger/60">
+            <p className="mb-2.5 text-[11px] font-bold tracking-[0.1em] text-white/45 uppercase">
+              {fix.label}
+            </p>
+            <p className="font-mono text-[12.5px] leading-relaxed text-white/40 line-through decoration-[#ef7c6c]/70">
               {fix.before}
             </p>
-            <p className="mt-2 text-[14px] leading-relaxed font-medium text-ink">{fix.after}</p>
+            <p className="mt-2 text-[14px] leading-relaxed font-semibold text-white">{fix.after}</p>
           </motion.div>
         ))}
       </div>

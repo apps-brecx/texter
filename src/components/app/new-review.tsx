@@ -3,10 +3,11 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImageUp, Loader2, X } from "lucide-react";
+import { ImageUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Select, Textarea } from "@/components/ui/field";
 import { Alert, Card } from "@/components/ui/surface";
+import { Mark } from "@/components/brand/mark";
 import { CONTENT_TYPES } from "@/lib/ai/content-types";
 import { cn } from "@/lib/utils";
 
@@ -71,12 +72,23 @@ export function NewReview({ styles }: { styles: Style[] }) {
 
   if (busy) {
     return (
-      <Card className="p-10 text-center">
-        <Loader2 className="mx-auto size-6 animate-spin text-accent" aria-hidden />
-        <p className="mt-5 text-[15px] font-medium text-ink">{STEPS[step]}…</p>
-        <p className="mt-2 text-[13px] text-muted">
-          This takes about twenty seconds. Don&apos;t close the tab.
+      <Card className="px-6 py-14 text-center">
+        <Mark className="mx-auto size-12" animate="breathe" />
+        <p className="mt-6 text-[16px] font-semibold text-ink">{STEPS[step]}…</p>
+        <p className="mt-2 text-[13.5px] text-muted">
+          About twenty seconds. You can leave this tab open.
         </p>
+        <div className="mx-auto mt-7 flex max-w-[260px] gap-1.5">
+          {STEPS.map((_, index) => (
+            <span
+              key={index}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors duration-500",
+                index <= step ? "bg-accent" : "bg-surface-3",
+              )}
+            />
+          ))}
+        </div>
       </Card>
     );
   }
@@ -93,9 +105,9 @@ export function NewReview({ styles }: { styles: Style[] }) {
               onClick={() => setContentType(type.value)}
               aria-pressed={contentType === type.value}
               className={cn(
-                "rounded-lg border p-3 text-left transition-all duration-150",
+                "u-tap rounded-md border p-3 text-left transition-all duration-150",
                 contentType === type.value
-                  ? "border-accent bg-accent-soft shadow-card"
+                  ? "border-accent-line bg-accent-soft shadow-card"
                   : "border-line bg-surface hover:border-line-strong hover:bg-surface-2",
               )}
             >

@@ -19,8 +19,8 @@ const EMPTY: FormState = {};
 function Head({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="mb-7">
-      <h1 className="u-display text-[2rem] text-ink">{title}</h1>
-      <p className="mt-2 text-[14px] leading-relaxed text-muted">{sub}</p>
+      <h1 className="u-display text-[30px] text-ink">{title}</h1>
+      <p className="mt-2.5 text-[14px] leading-relaxed text-muted">{sub}</p>
     </div>
   );
 }
@@ -58,7 +58,7 @@ export function LoginForm({ justReset }: { justReset: boolean }) {
         <Link href="/forgot-password" className="text-muted transition-colors hover:text-ink">
           Forgot password?
         </Link>
-        <Link href="/signup" className="font-medium text-accent hover:underline">
+        <Link href="/signup" className="font-semibold text-accent hover:underline">
           Create a workspace
         </Link>
       </div>
@@ -100,7 +100,7 @@ export function SignupForm() {
 
       <p className="pt-1 text-center text-[13px] text-muted">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-accent hover:underline">
+        <Link href="/login" className="font-semibold text-accent hover:underline">
           Sign in
         </Link>
       </p>

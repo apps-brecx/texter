@@ -11,7 +11,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
     return (
       <div className="space-y-4">
         <Alert>This reset link is incomplete. Open the link from your email again.</Alert>
-        <Link href="/forgot-password" className="text-[13px] font-medium text-accent hover:underline">
+        <Link href="/forgot-password" className="text-[13px] font-semibold text-accent hover:underline">
           Send a new link
         </Link>
       </div>

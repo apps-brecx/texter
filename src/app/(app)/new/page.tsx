@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
-import { PageHeader } from "@/components/app/page-header";
+import { PageBody, PageHeader } from "@/components/app/page-header";
 import { NewReview } from "@/components/app/new-review";
 
 export const metadata = { title: "New review" };
@@ -21,9 +21,9 @@ export default async function NewReviewPage() {
         title="What are we shipping?"
         description="Give Texter the artwork or the draft. It reads the words, checks them against your house rules, and asks what it needs before writing a line."
       />
-      <div className="px-6 py-8 sm:px-10">
+      <PageBody>
         <NewReview styles={styles} />
-      </div>
+      </PageBody>
     </>
   );
 }

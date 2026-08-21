@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/auth";
-import { PageHeader } from "@/components/app/page-header";
+import { PageBody, PageHeader } from "@/components/app/page-header";
 import { BrainBoard, type Entry } from "@/components/app/brain-ui";
 
 export const metadata = { title: "The brain" };
@@ -36,9 +36,9 @@ export default async function BrainPage() {
         title="What Texter knows about your house style"
         description="Two ways in: teach it directly, or approve copy and let it work out the pattern from what you changed. Everything active here is in the prompt on every single review."
       />
-      <div className="px-6 py-8 sm:px-10">
+      <PageBody>
         <BrainBoard entries={data} />
-      </div>
+      </PageBody>
     </>
   );
 }

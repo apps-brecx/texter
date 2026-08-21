@@ -48,13 +48,17 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   // otherwise a connection is held for the whole bcrypt cost.
   const passwordHash = await hashPassword(input.password);
 
+  // Resolved up front: querying the outer client from inside the transaction
+  // below would wait on a connection the transaction itself is holding.
+  const slug = await uniqueSlug(input.workspaceName);
+
   const created = await db.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: { name: input.name, email: input.email, passwordHash, isSuperAdmin: true },
     });
 
     const workspace = await tx.workspace.create({
-      data: { name: input.workspaceName, slug: await uniqueSlug(input.workspaceName) },
+      data: { name: input.workspaceName, slug },
     });
 
     await tx.membership.create({
