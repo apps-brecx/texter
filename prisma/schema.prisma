@@ -1,0 +1,284 @@
+// Texter — schema
+// A workspace-scoped copy desk: reviews, a teachable brain, and the people who use it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- people
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  avatarColor  String   @default("pine")
+  isSuperAdmin Boolean  @default(false)
+  lastSeenAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships    Membership[]
+  reviews        Review[]
+  sessions       AuthSession[]
+  resetTokens    PasswordResetToken[]
+  invitesSent    Invite[]        @relation("InviteSender")
+  brainEntries   BrainEntry[]    @relation("BrainAuthor")
+  activity       ActivityLog[]
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------- workspaces
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  // Context the brain always gets: what the company sells, who it talks to.
+  industry     String?
+  audience     String?
+  brandNotes   String?  @db.Text
+  region       String   @default("US")
+  aiProvider   String   @default("anthropic") // anthropic | openai
+  aiModel      String   @default("claude-opus-5")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members     Membership[]
+  invites     Invite[]
+  reviews     Review[]
+  styles      StyleProfile[]
+  brainEntries BrainEntry[]
+  assets      Asset[]
+  activity    ActivityLog[]
+}
+
+model Membership {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        Role     @default(MEMBER)
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  email       String
+  role        Role      @default(MEMBER)
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([email])
+}
+
+// ---------------------------------------------------------------- voice
+
+model StyleProfile {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  tagline     String
+  // Free-form direction fed straight to the model.
+  guidance    String   @db.Text
+  formality   Int      @default(50) // 0 street .. 100 boardroom
+  energy      Int      @default(50) // 0 calm .. 100 hype
+  emojiPolicy String   @default("sparing") // none | sparing | generous
+  isDefault   Boolean  @default(false)
+  isBuiltIn   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reviews   Review[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+// ---------------------------------------------------------------- the brain
+
+enum BrainKind {
+  RULE       // "Never use 'kindly do the needful'."
+  TERM       // glossary: wrong -> right
+  EXAMPLE    // before/after pair
+  FACT       // product/company fact the copy must get right
+}
+
+enum BrainOrigin {
+  TAUGHT   // a human wrote it
+  LEARNED  // extracted from an edit the human made
+}
+
+enum BrainStatus {
+  ACTIVE
+  PENDING   // learned, waiting for a human to confirm
+  ARCHIVED
+}
+
+model BrainEntry {
+  id          String      @id @default(cuid())
+  workspaceId String
+  kind        BrainKind   @default(RULE)
+  origin      BrainOrigin @default(TAUGHT)
+  status      BrainStatus @default(ACTIVE)
+  title       String
+  body        String      @db.Text
+  // TERM entries use these; everything else leaves them null.
+  wrongForm   String?
+  rightForm   String?
+  // Which content types this applies to. Empty = all.
+  appliesTo   String[]    @default([])
+  // Bumped every time the entry visibly helps; used to order the prompt.
+  weight      Int         @default(1)
+  timesUsed   Int         @default(0)
+  authorId    String?
+  sourceReviewId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User?     @relation("BrainAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+}
+
+// ---------------------------------------------------------------- work
+
+enum ContentType {
+  EMAIL
+  BANNER
+  INSTAGRAM
+  FACEBOOK
+  SMS
+  WHATSAPP
+  PUSH
+  PRODUCT
+  LANDING
+  OTHER
+}
+
+enum ReviewStage {
+  DRAFT       // uploaded, nothing asked yet
+  QUESTIONS   // brain asked, waiting on the human
+  READY       // copy generated
+  APPROVED    // human accepted / shipped it
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  workspaceId String
+  filename    String
+  mimeType    String
+  bytes       Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reviews   Review[]
+
+  @@index([workspaceId])
+}
+
+model Review {
+  id          String      @id @default(cuid())
+  workspaceId String
+  authorId    String
+  assetId     String?
+  styleId     String?
+
+  title       String
+  contentType ContentType @default(EMAIL)
+  stage       ReviewStage @default(DRAFT)
+
+  // What came in.
+  sourceText  String?     @db.Text
+  briefNote   String?     @db.Text
+
+  // Phase 1 output.
+  imageRead   Json?       // what the AI sees in the image
+  issues      Json?       // [{severity, span, problem, fix, why}]
+  questions   Json?       // [{id, question, why, suggestions[]}]
+  answers     Json?       // { [questionId]: string }
+
+  // Phase 2 output.
+  output      Json?       // shape depends on contentType
+  modelUsed   String?
+  provider    String?
+
+  approvedText String?    @db.Text  // what the human actually shipped
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  asset     Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  style     StyleProfile? @relation(fields: [styleId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([authorId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String?
+  action      String
+  detail      String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+}
